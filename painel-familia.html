@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Painel E&V</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --e-primary: #1a6cf7; --e-light: #deeaff; --e-mid: #6aaaf7;
+    --v-primary: #e0477a; --v-light: #fde2ec; --v-mid: #f098bc;
+    --bg: #f2ede8; --card: #faf8f5; --text: #1a1714; --text-muted: #7a7470;
+    --border: rgba(0,0,0,0.08);
+    --shadow: 0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.05);
+    --shadow-hover: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07);
+    --radius: 20px; --radius-sm: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(26,108,247,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(224,71,122,0.06) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.025'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── SETUP MODAL ── */
+  .setup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .setup-modal { background: var(--card); border-radius: var(--radius); padding: 32px; max-width: 500px; width: 100%; box-shadow: 0 24px 80px rgba(0,0,0,0.2); animation: fadeUp 0.4s ease both; max-height: 90vh; overflow-y: auto; }
+  .setup-modal h2 { font-family: 'DM Serif Display', serif; font-size: 24px; margin-bottom: 6px; }
+  .setup-modal > p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+  .setup-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg); border-radius: 10px; padding: 4px; }
+  .setup-tab { flex: 1; padding: 8px; border-radius: 8px; text-align: center; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; color: var(--text-muted); user-select: none; }
+  .setup-tab.active { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .setup-section { display: none; }
+  .setup-section.active { display: block; }
+  .setup-field { margin-bottom: 14px; }
+  .setup-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 5px; }
+  .setup-field input { width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  .setup-field input:focus { border-color: var(--e-primary); box-shadow: 0 0 0 3px rgba(26,108,247,0.12); }
+  .setup-field input.mono { font-family: monospace; font-size: 12px; }
+  .setup-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+  .setup-hint a { color: var(--e-primary); }
+  .setup-info-box { background: var(--bg); border-radius: var(--radius-sm); padding: 16px; font-size: 13px; line-height: 1.7; color: var(--text-muted); }
+  .setup-info-box strong { color: var(--text); }
+  .setup-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-primary { flex: 1; padding: 11px; border-radius: var(--radius-sm); background: var(--e-primary); color: #fff; border: none; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: filter 0.15s; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-secondary { padding: 11px 18px; border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); border: 1px solid var(--border); font-size: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s; }
+  .btn-secondary:hover { background: var(--bg); }
+  .btn-block { width: 100%; }
+  .fb-steps { margin: 12px 0; }
+  .fb-step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+  .fb-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--e-light); color: var(--e-primary); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── KIOSK BAR ── */
+  .kiosk-bar { position: fixed; top: 0; left: 0; right: 0; height: 40px; background: rgba(26,23,20,0.92); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 500; transform: translateY(-100%); transition: transform 0.3s ease; }
+  .kiosk-bar.visible { transform: translateY(0); }
+  .kiosk-bar-text { font-size: 12px; color: rgba(255,255,255,0.7); }
+  .kiosk-actions { display: flex; gap: 8px; }
+  .kiosk-btn { font-size: 11px; font-weight: 600; padding: 5px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #fff; cursor: pointer; transition: background 0.15s; font-family: 'DM Sans', sans-serif; }
+  .kiosk-btn:hover { background: rgba(255,255,255,0.15); }
+  .kiosk-exit { background: rgba(224,71,122,0.2); border-color: rgba(224,71,122,0.5); }
+  .kiosk-exit:hover { background: rgba(224,71,122,0.35); }
+
+  /* ── SYNC ── */
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; transition: background 0.3s; vertical-align: middle; }
+  .sync-dot.online { background: #22c55e; box-shadow: 0 0 5px #22c55e88; }
+  .sync-dot.offline { background: #f59e0b; }
+  .sync-dot.syncing { background: #3b82f6; animation: pulse 0.8s infinite; }
+  .sync-dot.error { background: #ef4444; }
+  .sync-dot.local { background: #a8a29e; }
+
+  /* ── WEATHER ── */
+  .weather-card { background: var(--card); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 16px 20px; display: flex; align-items: center; gap: 20px; box-shadow: var(--shadow); margin-bottom: 20px; animation: fadeUp 0.6s 0.05s ease both; flex-wrap: wrap; }
+  .weather-main { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .weather-icon { font-size: 40px; line-height: 1; }
+  .weather-temp { font-family: 'DM Serif Display', serif; font-size: 36px; line-height: 1; }
+  .weather-desc { font-size: 13px; font-weight: 500; color: var(--text); }
+  .weather-loc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .weather-sep { width: 1px; height: 48px; background: var(--border); flex-shrink: 0; }
+  .weather-details { display: flex; gap: 20px; }
+  .weather-detail { text-align: center; }
+  .weather-detail-val { font-size: 16px; font-weight: 600; color: var(--text); }
+  .weather-detail-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .weather-forecast { display: flex; gap: 8px; margin-left: auto; }
+  .forecast-item { background: var(--bg); border-radius: 10px; padding: 8px 10px; text-align: center; min-width: 54px; }
+  .forecast-day { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+  .forecast-icon { font-size: 18px; margin: 2px 0; }
+  .forecast-temps { font-size: 12px; font-weight: 600; color: var(--text); }
+  .forecast-min { color: var(--text-muted); font-weight: 400; }
+  .weather-loading { font-size: 13px; color: var(--text-muted); }
+
+  /* ── WRAPPER ── */
+  .wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; transition: padding-top 0.3s; }
+  .wrapper.kiosk-mode { padding-top: 56px; }
+
+  /* ── HEADER ── */
+  .header { text-align: center; margin-bottom: 24px; animation: fadeDown 0.6s ease both; }
+  .header-label { font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .header h1 { font-family: 'DM Serif Display', serif; font-size: clamp(28px, 5vw, 46px); line-height: 1.1; }
+  .header h1 span.e { color: var(--e-primary); }
+  .header h1 span.amp { color: var(--text-muted); font-style: italic; margin: 0 4px; }
+  .header h1 span.v { color: var(--v-primary); }
+  .date-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap; }
+  .date-bar .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border); display: inline-block; }
+  .header-actions { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .icon-btn { display: flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif; box-shadow: var(--shadow); }
+  .icon-btn:hover { border-color: rgba(0,0,0,0.2); color: var(--text); }
+  .icon-btn.active { background: var(--e-light); color: var(--e-primary); border-color: var(--e-mid); }
+
+  /* ── STATS ── */
+  .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; animation: fadeUp 0.6s 0.1s ease both; }
+  .stat-card { background: var(--card); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 14px 18px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow); }
+  .stat-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .stat-icon.total { background: #f0ece8; } .stat-icon.done { background: #e4f5e9; } .stat-icon.pending { background: #fff5e0; }
+  .stat-num { font-size: 22px; font-weight: 600; color: var(--text); line-height: 1; }
+  .stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ── COLUMNS ── */
+  .colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; animation: fadeUp 0.6s 0.2s ease both; }
+  @media (max-width: 640px) { .colunas { grid-template-columns: 1fr; } }
+  .coluna { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px; transition: box-shadow 0.25s; }
+  .coluna:hover { box-shadow: var(--shadow-hover); }
+  .col-header { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-family: 'DM Serif Display', serif; font-size: 20px; flex-shrink: 0; position: relative; overflow: hidden; }
+  .avatar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.3), transparent); }
+  .avatar-e { background: var(--e-primary); color: #fff; }
+  .avatar-v { background: var(--v-primary); color: #fff; }
+  .col-info { flex: 1; }
+  .col-name { font-family: 'DM Serif Display', serif; font-size: 20px; line-height: 1; }
+  .col-name.e { color: var(--e-primary); } .col-name.v { color: var(--v-primary); }
+  .col-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .ring-wrap { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 3.5; }
+  .ring-fill { fill: none; stroke-width: 3.5; stroke-linecap: round; transition: stroke-dashoffset 0.5s cubic-bezier(.4,0,.2,1); }
+  .ring-fill-e { stroke: var(--e-primary); } .ring-fill-v { stroke: var(--v-primary); }
+  .ring-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text); }
+  .add-row { display: flex; gap: 8px; }
+  .add-input { flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  .add-input::placeholder { color: var(--text-muted); }
+  .add-input-e:focus { border-color: var(--e-primary); box-shadow: 0 0 0 3px rgba(26,108,247,0.12); }
+  .add-input-v:focus { border-color: var(--v-primary); box-shadow: 0 0 0 3px rgba(224,71,122,0.12); }
+  .add-btn { width: 42px; height: 42px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; color: #fff; transition: transform 0.15s, filter 0.15s; flex-shrink: 0; }
+  .add-btn:hover { transform: scale(1.07); filter: brightness(1.1); } .add-btn:active { transform: scale(0.95); }
+  .add-btn-e { background: var(--e-primary); } .add-btn-v { background: var(--v-primary); }
+  .filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; transition: all 0.15s; user-select: none; }
+  .chip:hover { border-color: rgba(0,0,0,0.2); color: var(--text); }
+  .chip.active-e { background: var(--e-light); border-color: var(--e-mid); color: var(--e-primary); }
+  .chip.active-v { background: var(--v-light); border-color: var(--v-mid); color: var(--v-primary); }
+  .lista { display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: var(--radius-sm); background: var(--bg); border: 1px solid var(--border); transition: all 0.25s; animation: slideIn 0.25s ease both; position: relative; overflow: hidden; }
+  .item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; opacity: 0; transition: opacity 0.2s; }
+  .item-e::before { background: var(--e-primary); } .item-v::before { background: var(--v-primary); }
+  .item:hover::before { opacity: 1; }
+  .item:hover { border-color: rgba(0,0,0,0.15); transform: translateX(2px); }
+  .item.done { opacity: 0.5; } .item.done .item-text { text-decoration: line-through; }
+  .check-btn { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+  .check-btn:hover { border-color: rgba(0,0,0,0.3); transform: scale(1.1); }
+  .check-btn.checked-e { background: var(--e-primary); border-color: var(--e-primary); }
+  .check-btn.checked-v { background: var(--v-primary); border-color: var(--v-primary); }
+  .check-btn svg { display: none; }
+  .check-btn.checked-e svg, .check-btn.checked-v svg { display: block; }
+  .item-text { flex: 1; font-size: 14px; line-height: 1.4; word-break: break-word; }
+  .item-time { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+  .del-btn { width: 26px; height: 26px; border-radius: 8px; border: none; background: transparent; cursor: pointer; color: var(--text-muted); font-size: 14px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: all 0.15s; flex-shrink: 0; }
+  .item:hover .del-btn { opacity: 1; }
+  .del-btn:hover { background: #fee2e2; color: #dc2626; }
+  .vazio { text-align: center; padding: 28px 16px; color: var(--text-muted); font-size: 13px; }
+  .vazio-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+  .col-footer { display: flex; justify-content: flex-end; }
+  .clear-btn { font-size: 12px; color: var(--text-muted); background: transparent; border: none; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+  .clear-btn:hover { background: #fee2e2; color: #dc2626; }
+
+  /* ── TOAST ── */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 999px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,0.2); transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.3s; opacity: 0; pointer-events: none; z-index: 600; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  .confetti-dot { position: fixed; width: 7px; height: 7px; border-radius: 50%; pointer-events: none; z-index: 9999; animation: confettiFall 0.9s ease forwards; }
+
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+  @keyframes confettiFall { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(0.3); } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .clock { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<!-- KIOSK BAR -->
+<div class="kiosk-bar" id="kioskBar">
+  <span class="kiosk-bar-text">🖥️ Modo quiosque ativo — tela bloqueada</span>
+  <div class="kiosk-actions">
+    <button class="kiosk-btn" onclick="openSetup()">⚙️ Config</button>
+    <button class="kiosk-btn kiosk-exit" onclick="exitKiosk()">✕ Sair</button>
+  </div>
+</div>
+
+<!-- SETUP MODAL -->
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-modal">
+    <h2>⚙️ Configurações</h2>
+    <p>Configure Firebase para sincronização em tempo real entre dispositivos.</p>
+    <div class="setup-tabs">
+      <div class="setup-tab active" onclick="switchTab('firebase',this)">🔥 Firebase</div>
+      <div class="setup-tab" onclick="switchTab('clima',this)">🌤️ Clima</div>
+      <div class="setup-tab" onclick="switchTab('kiosk',this)">🖥️ Quiosque</div>
+    </div>
+
+    <!-- Firebase -->
+    <div class="setup-section active" id="tab-firebase">
+      <div class="fb-steps">
+        <div class="fb-step"><div class="fb-step-num">1</div><span>Acesse <a href="https://console.firebase.google.com" target="_blank" style="color:var(--e-primary)">console.firebase.google.com</a> e crie um projeto gratuito</span></div>
+        <div class="fb-step"><div class="fb-step-num">2</div><span>Em <strong>Realtime Database</strong>, crie o banco e copie a URL</span></div>
+        <div class="fb-step"><div class="fb-step-num">3</div><span>Em <strong>Configurações do projeto → Apps web</strong>, registre um app e copie as credenciais abaixo</span></div>
+        <div class="fb-step"><div class="fb-step-num">4</div><span>Em <strong>Regras do banco</strong>, defina <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px">".read": true, ".write": true</code> (use autenticação depois)</span></div>
+      </div>
+      <div class="setup-field"><label>API Key</label><input class="mono" id="fb-apiKey" placeholder="AIzaSy..."/></div>
+      <div class="setup-field"><label>Auth Domain</label><input class="mono" id="fb-authDomain" placeholder="meu-projeto.firebaseapp.com"/></div>
+      <div class="setup-field"><label>Database URL (Realtime DB)</label><input class="mono" id="fb-databaseURL" placeholder="https://meu-projeto-default-rtdb.firebaseio.com"/></div>
+      <div class="setup-field"><label>Project ID</label><input class="mono" id="fb-projectId" placeholder="meu-projeto"/></div>
+      <div id="fb-status" style="margin-top:8px;font-size:13px;color:var(--text-muted);"></div>
+    </div>
+
+    <!-- Clima -->
+    <div class="setup-section" id="tab-clima">
+      <p style="margin-bottom:14px;font-size:13px;color:var(--text-muted);">Usa a API gratuita <strong>Open-Meteo</strong> — sem necessidade de cadastro ou chave. Atualizações a cada 30 minutos.</p>
+      <div class="setup-field"><label>Nome da cidade (exibição)</label><input id="clima-cidade" value="Viamão, RS"/></div>
+      <div class="setup-field"><label>Latitude</label><input id="clima-lat" value="-30.0811"/></div>
+      <div class="setup-field"><label>Longitude</label><input id="clima-lon" value="-51.0233"/><div class="setup-hint">💡 Abra o Google Maps, clique com botão direito no local e copie as coordenadas.</div></div>
+    </div>
+
+    <!-- Kiosk -->
+    <div class="setup-section" id="tab-kiosk">
+      <div class="setup-info-box">
+        <strong>No Android (Chrome):</strong><br>
+        1. Abra o arquivo no Chrome<br>
+        2. Menu ⋮ → <em>"Adicionar à tela inicial"</em><br>
+        3. Abra pelo ícone → já abre em tela cheia automaticamente<br><br>
+        <strong>Pelo botão abaixo:</strong><br>
+        Ativa fullscreen via JavaScript e bloqueia o apagamento da tela (Wake Lock API).
+      </div>
+      <br>
+      <button class="btn-primary btn-block" onclick="enterKiosk();closeSetup()">🖥️ Ativar modo quiosque agora</button>
+    </div>
+
+    <div class="setup-actions">
+      <button class="btn-secondary" onclick="closeSetup()">Fechar</button>
+      <button class="btn-primary" onclick="saveSetup()">💾 Salvar configurações</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="wrapper" id="wrapper">
+  <header class="header">
+    <div class="header-label">Painel da família</div>
+    <h1><span class="e">Eduardo</span><span class="amp">&</span><span class="v">Vitória</span></h1>
+    <div class="date-bar">
+      <span id="data-hoje"></span>
+      <span class="dot"></span>
+      <span class="clock" id="relogio"></span>
+      <span class="dot"></span>
+      <span><span class="sync-dot local" id="syncDot"></span><span id="syncLabel">local</span></span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="kioskBtn" onclick="enterKiosk()">🖥️ Quiosque</button>
+      <button class="icon-btn" onclick="openSetup()">⚙️ Configurações</button>
+    </div>
+  </header>
+
+  <!-- WEATHER -->
+  <div class="weather-card" id="weatherCard">
+    <div class="weather-loading">🌤️ Carregando clima de Viamão...</div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-icon total">📋</div><div><div class="stat-num" id="stat-total">0</div><div class="stat-lbl">Total</div></div></div>
+    <div class="stat-card"><div class="stat-icon done">✅</div><div><div class="stat-num" id="stat-feitas">0</div><div class="stat-lbl">Concluídas</div></div></div>
+    <div class="stat-card"><div class="stat-icon pending">⏳</div><div><div class="stat-num" id="stat-pend">0</div><div class="stat-lbl">Pendentes</div></div></div>
+  </div>
+
+  <!-- COLUMNS -->
+  <div class="colunas">
+    <div class="coluna">
+      <div class="col-header">
+        <div class="avatar avatar-e">E</div>
+        <div class="col-info"><div class="col-name e">Eduardo</div><div class="col-sub" id="sub-e">0 tarefas</div></div>
+        <div class="ring-wrap">
+          <svg width="44" height="44" viewBox="0 0 44 44"><circle class="ring-bg" cx="22" cy="22" r="18"/><circle class="ring-fill ring-fill-e" id="ring-e" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1"/></svg>
+          <div class="ring-text" id="ring-e-txt">0%</div>
+        </div>
+      </div>
+      <div class="add-row">
+        <input class="add-input add-input-e" id="inp-e" placeholder="Adicionar tarefa..." maxlength="100"/>
+        <button class="add-btn add-btn-e" onclick="add('e')">+</button>
+      </div>
+      <div class="filtros" id="filtros-e">
+        <div class="chip active-e" onclick="setFiltro('e','todas',this)">Todas</div>
+        <div class="chip" onclick="setFiltro('e','ativas',this)">Ativas</div>
+        <div class="chip" onclick="setFiltro('e','feitas',this)">Feitas</div>
+      </div>
+      <div class="lista" id="lista-e"></div>
+      <div class="col-footer"><button class="clear-btn" onclick="limparFeitas('e')">Limpar concluídas</button></div>
+    </div>
+
+    <div class="coluna">
+      <div class="col-header">
+        <div class="avatar avatar-v">V</div>
+        <div class="col-info"><div class="col-name v">Vitória</div><div class="col-sub" id="sub-v">0 tarefas</div></div>
+        <div class="ring-wrap">
+          <svg width="44" height="44" viewBox="0 0 44 44"><circle class="ring-bg" cx="22" cy="22" r="18"/><circle class="ring-fill ring-fill-v" id="ring-v" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1"/></svg>
+          <div class="ring-text" id="ring-v-txt">0%</div>
+        </div>
+      </div>
+      <div class="add-row">
+        <input class="add-input add-input-v" id="inp-v" placeholder="Adicionar tarefa..." maxlength="100"/>
+        <button class="add-btn add-btn-v" onclick="add('v')">+</button>
+      </div>
+      <div class="filtros" id="filtros-v">
+        <div class="chip active-v" onclick="setFiltro('v','todas',this)">Todas</div>
+        <div class="chip" onclick="setFiltro('v','ativas',this)">Ativas</div>
+        <div class="chip" onclick="setFiltro('v','feitas',this)">Feitas</div>
+      </div>
+      <div class="lista" id="lista-v"></div>
+      <div class="col-footer"><button class="clear-btn" onclick="limparFeitas('v')">Limpar concluídas</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════
+const CFG_KEY  = 'painel_ev_cfg';
+const DATA_KEY = 'painel_ev_v3';
+let dados = { e: [], v: [] };
+let filtros = { e: 'todas', v: 'todas' };
+let db = null, fbRef = null;
+let ignoreRemote = false;
+let kioskActive  = false;
+let wakeLock     = null;
+
+function getCfg() { try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch { return {}; } }
+function saveCfg(c) { try { localStorage.setItem(CFG_KEY, JSON.stringify(c)); } catch {} }
+
+// ════════════════════════════════════════
+// SETUP MODAL
+// ════════════════════════════════════════
+window.switchTab = (name, el) => {
+  document.querySelectorAll('.setup-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.setup-section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+};
+
+window.openSetup = () => {
+  const c = getCfg();
+  document.getElementById('fb-apiKey').value      = c.apiKey      || '';
+  document.getElementById('fb-authDomain').value  = c.authDomain  || '';
+  document.getElementById('fb-databaseURL').value = c.databaseURL || '';
+  document.getElementById('fb-projectId').value   = c.projectId   || '';
+  document.getElementById('clima-cidade').value   = c.cidade      || 'Viamão, RS';
+  document.getElementById('clima-lat').value      = c.lat         || '-30.0811';
+  document.getElementById('clima-lon').value      = c.lon         || '-51.0233';
+  document.getElementById('setupOverlay').style.display = 'flex';
+};
+
+window.closeSetup = () => {
+  document.getElementById('setupOverlay').style.display = 'none';
+};
+
+window.saveSetup = () => {
+  saveCfg({
+    apiKey:      document.getElementById('fb-apiKey').value.trim(),
+    authDomain:  document.getElementById('fb-authDomain').value.trim(),
+    databaseURL: document.getElementById('fb-databaseURL').value.trim(),
+    projectId:   document.getElementById('fb-projectId').value.trim(),
+    cidade:      document.getElementById('clima-cidade').value.trim(),
+    lat:         document.getElementById('clima-lat').value.trim(),
+    lon:         document.getElementById('clima-lon').value.trim(),
+  });
+  closeSetup();
+  toast('Configurações salvas! Recarregando...');
+  setTimeout(() => location.reload(), 1300);
+};
+
+// ════════════════════════════════════════
+// FIREBASE
+// ════════════════════════════════════════
+function setSyncStatus(s) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + s;
+  lbl.textContent = { online:'sincronizado', offline:'offline', syncing:'sincronizando...', error:'erro sync', local:'local' }[s] || s;
+}
+
+async function initFirebase() {
+  const c = getCfg();
+  if (!c.apiKey || !c.databaseURL) { setSyncStatus('local'); return; }
+  try {
+    setSyncStatus('syncing');
+    const app = initializeApp({ apiKey: c.apiKey, authDomain: c.authDomain, databaseURL: c.databaseURL, projectId: c.projectId });
+    db = getDatabase(app);
+    fbRef = ref(db, 'painel_ev');
+    onValue(fbRef, snap => {
+      const remote = snap.val();
+      if (!remote?.dados) { setSyncStatus('online'); return; }
+      if (ignoreRemote) { ignoreRemote = false; return; }
+      dados = remote.dados;
+      salvarLocal();
+      renderAll();
+      setSyncStatus('online');
+    }, err => { console.error(err); setSyncStatus('error'); });
+  } catch(e) {
+    console.error(e);
+    setSyncStatus('error');
+    document.getElementById('fb-status').textContent = '⚠️ ' + e.message;
+  }
+}
+
+async function syncFirebase() {
+  if (!fbRef) return;
+  setSyncStatus('syncing');
+  try {
+    ignoreRemote = true;
+    await set(fbRef, { dados, updatedAt: Date.now() });
+    setSyncStatus('online');
+  } catch(e) { setSyncStatus('error'); }
+}
+
+// ════════════════════════════════════════
+// STORAGE
+// ════════════════════════════════════════
+function salvarLocal() { try { localStorage.setItem(DATA_KEY, JSON.stringify(dados)); } catch {} }
+function carregarLocal() { try { const d = localStorage.getItem(DATA_KEY); if (d) dados = JSON.parse(d); } catch {} }
+function salvar() { salvarLocal(); syncFirebase(); }
+
+// ════════════════════════════════════════
+// TASKS
+// ════════════════════════════════════════
+window.add = lado => {
+  const inp = document.getElementById('inp-' + lado);
+  const txt = inp.value.trim();
+  if (!txt) { inp.focus(); return; }
+  dados[lado].unshift({ id: Date.now(), texto: txt, feito: false, hora: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) });
+  inp.value = ''; inp.focus();
+  salvar(); renderAll(); toast('Tarefa adicionada! ✓');
+};
+
+window.toggle = (lado, id) => {
+  const item = dados[lado].find(i => i.id === id);
+  if (!item) return;
+  item.feito = !item.feito;
+  salvar(); renderAll();
+  if (item.feito) { confetti(); toast('Concluída! 🎉'); }
+};
+
+window.del = (lado, id) => {
+  dados[lado] = dados[lado].filter(i => i.id !== id);
+  salvar(); renderAll();
+};
+
+window.limparFeitas = lado => {
+  const antes = dados[lado].length;
+  dados[lado] = dados[lado].filter(i => !i.feito);
+  if (dados[lado].length < antes) { salvar(); renderAll(); toast('Concluídas removidas!'); }
+};
+
+window.setFiltro = (lado, filtro, el) => {
+  filtros[lado] = filtro;
+  document.querySelectorAll(`#filtros-${lado} .chip`).forEach(c => c.classList.remove('active-e','active-v'));
+  el.classList.add(lado === 'e' ? 'active-e' : 'active-v');
+  renderLista(lado);
+};
+
+// ════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════
+function filtrar(lado) {
+  const f = filtros[lado];
+  if (f === 'ativas') return dados[lado].filter(i => !i.feito);
+  if (f === 'feitas') return dados[lado].filter(i => i.feito);
+  return dados[lado];
+}
+
+function renderLista(lado) {
+  const lista = document.getElementById('lista-' + lado);
+  const items = filtrar(lado);
+  if (!items.length) {
+    lista.innerHTML = `<div class="vazio"><span class="vazio-icon">${filtros[lado]==='feitas'?'🏆':'📝'}</span>${filtros[lado]==='feitas'?'Nenhuma tarefa concluída ainda':'Nenhuma tarefa aqui!'}</div>`;
+    return;
+  }
+  lista.innerHTML = items.map(item => `
+    <div class="item item-${lado} ${item.feito?'done':''}">
+      <button class="check-btn ${item.feito?'checked-'+lado:''}" onclick="toggle('${lado}',${item.id})">
+        <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5L4 7.5L10 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="item-text">${esc(item.texto)}</span>
+      <span class="item-time">${item.hora||''}</span>
+      <button class="del-btn" onclick="del('${lado}',${item.id})">✕</button>
+    </div>`).join('');
+}
+
+function renderStats() {
+  const total  = dados.e.length + dados.v.length;
+  const feitas = dados.e.filter(i=>i.feito).length + dados.v.filter(i=>i.feito).length;
+  document.getElementById('stat-total').textContent  = total;
+  document.getElementById('stat-feitas').textContent = feitas;
+  document.getElementById('stat-pend').textContent   = total - feitas;
+  ['e','v'].forEach(lado => {
+    const tot = dados[lado].length, feit = dados[lado].filter(i=>i.feito).length;
+    const pct = tot ? Math.round(feit/tot*100) : 0;
+    document.getElementById('ring-'+lado).style.strokeDashoffset = 113.1 - 113.1 * pct / 100;
+    document.getElementById('ring-'+lado+'-txt').textContent = pct + '%';
+    document.getElementById('sub-'+lado).textContent = tot===0?'Nenhuma tarefa':tot===1?'1 tarefa':tot+' tarefas';
+  });
+}
+
+function renderAll() { renderLista('e'); renderLista('v'); renderStats(); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ════════════════════════════════════════
+// TOAST & CONFETTI
+// ════════════════════════════════════════
+let toastTimer;
+window.toast = msg => {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+};
+
+function confetti() {
+  const colors = ['#1a6cf7','#e0477a','#f5a623','#7ed321','#9b59b6','#06b6d4'];
+  for (let i = 0; i < 22; i++) setTimeout(() => {
+    const d = document.createElement('div');
+    d.className = 'confetti-dot';
+    d.style.cssText = `left:${15+Math.random()*70}%;top:${25+Math.random()*50}%;background:${colors[Math.floor(Math.random()*colors.length)]};animation-delay:${Math.random()*0.3}s;animation-duration:${0.7+Math.random()*0.6}s;`;
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 1500);
+  }, i * 28);
+}
+
+// ════════════════════════════════════════
+// CLOCK
+// ════════════════════════════════════════
+document.getElementById('data-hoje').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+const updateClock = () => document.getElementById('relogio').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+updateClock(); setInterval(updateClock, 1000);
+
+// ════════════════════════════════════════
+// KIOSK MODE
+// ════════════════════════════════════════
+window.enterKiosk = async () => {
+  try { await (document.documentElement.requestFullscreen?.() ?? document.documentElement.webkitRequestFullscreen?.()); } catch {}
+  try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch {}
+  kioskActive = true;
+  document.getElementById('kioskBar').classList.add('visible');
+  document.getElementById('wrapper').classList.add('kiosk-mode');
+  const btn = document.getElementById('kioskBtn');
+  btn.classList.add('active'); btn.textContent = '🖥️ Ativo';
+};
+
+window.exitKiosk = () => {
+  try { (document.exitFullscreen?.() ?? document.webkitExitFullscreen?.()); } catch {}
+  try { wakeLock?.release(); wakeLock = null; } catch {}
+  kioskActive = false;
+  document.getElementById('kioskBar').classList.remove('visible');
+  document.getElementById('wrapper').classList.remove('kiosk-mode');
+  const btn = document.getElementById('kioskBtn');
+  btn.classList.remove('active'); btn.textContent = '🖥️ Quiosque';
+};
+
+// Re-enter fullscreen se o usuário sair acidentalmente
+document.addEventListener('fullscreenchange', () => {
+  if (kioskActive && !document.fullscreenElement) setTimeout(() => { if (kioskActive) window.enterKiosk(); }, 3000);
+});
+
+// Re-acquire Wake Lock se perder (ex: trocar de aba e voltar)
+document.addEventListener('visibilitychange', async () => {
+  if (kioskActive && document.visibilityState === 'visible' && wakeLock === null) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+});
+
+// ════════════════════════════════════════
+// WEATHER — Open-Meteo (gratuito, sem chave)
+// ════════════════════════════════════════
+const WMO_ICON = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'❄️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️',96:'⛈️',99:'⛈️'};
+const WMO_DESC = {0:'Céu limpo',1:'Principalmente limpo',2:'Parcialmente nublado',3:'Nublado',45:'Névoa',48:'Névoa com geada',51:'Garoa leve',53:'Garoa moderada',55:'Garoa intensa',61:'Chuva leve',63:'Chuva moderada',65:'Chuva forte',71:'Neve leve',73:'Neve moderada',75:'Neve forte',80:'Pancadas leves',81:'Pancadas moderadas',82:'Pancadas fortes',95:'Tempestade',96:'Tempestade c/ granizo',99:'Tempestade forte'};
+const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+async function fetchWeather() {
+  const c = getCfg();
+  const lat = c.lat || '-30.0811', lon = c.lon || '-51.0233', cidade = c.cidade || 'Viamão, RS';
+  const card = document.getElementById('weatherCard');
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&wind_speed_unit=kmh&timezone=America%2FSao_Paulo&forecast_days=4`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const cur = d.current, daily = d.daily;
+    const icon = WMO_ICON[cur.weather_code] || '🌡️';
+    const desc = WMO_DESC[cur.weather_code] || '';
+    const forecast = daily.time.slice(1,4).map((date, i) => {
+      const di = i + 1;
+      const day = DIAS_SEMANA[new Date(date + 'T12:00:00').getDay()];
+      return `<div class="forecast-item">
+        <div class="forecast-day">${day}</div>
+        <div class="forecast-icon">${WMO_ICON[daily.weather_code[di]]||'🌡️'}</div>
+        <div class="forecast-temps">${Math.round(daily.temperature_2m_max[di])}° <span class="forecast-min">${Math.round(daily.temperature_2m_min[di])}°</span></div>
+      </div>`;
+    }).join('');
+    card.innerHTML = `
+      <div class="weather-main">
+        <div class="weather-icon">${icon}</div>
+        <div>
+          <div class="weather-temp">${Math.round(cur.temperature_2m)}°C</div>
+          <div class="weather-desc">${desc}</div>
+          <div class="weather-loc">📍 ${cidade}</div>
+        </div>
+      </div>
+      <div class="weather-sep"></div>
+      <div class="weather-details">
+        <div class="weather-detail"><div class="weather-detail-val">${Math.round(cur.apparent_temperature)}°C</div><div class="weather-detail-lbl">Sensação</div></div>
+        <div class="weather-detail"><div class="weather-detail-val">${cur.relative_humidity_2m}%</div><div class="weather-detail-lbl">Umidade</div></div>
+        <div class="weather-detail"><div class="weather-detail-val">${Math.round(cur.wind_speed_10m)} km/h</div><div class="weather-detail-lbl">Vento</div></div>
+      </div>
+      <div class="weather-forecast">${forecast}</div>`;
+    setTimeout(fetchWeather, 30 * 60 * 1000);
+  } catch(e) {
+    card.innerHTML = '<div class="weather-loading">⚠️ Clima indisponível no momento.</div>';
+    setTimeout(fetchWeather, 5 * 60 * 1000);
+  }
+}
+
+// ════════════════════════════════════════
+// ENTER KEY
+// ════════════════════════════════════════
+['e','v'].forEach(lado => {
+  document.getElementById('inp-'+lado).addEventListener('keydown', e => { if (e.key === 'Enter') window.add(lado); });
+});
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+const hasCfg = !!getCfg().apiKey;
+document.getElementById('setupOverlay').style.display = hasCfg ? 'none' : 'flex';
+carregarLocal();
+renderAll();
+initFirebase();
+fetchWeather();
+</script>
+</body>
+</html>
